@@ -9,7 +9,7 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.PolylineOptions
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
-    var isMarkerClicked = MutableLiveData<Boolean>(false)
+    var isMarkerClicked = MutableLiveData(false)
     var lineOption = MutableLiveData<PolylineOptions>()
     var markerTag = MutableLiveData<String>()
     val currentSelectedPagePos = MutableLiveData<Int>()

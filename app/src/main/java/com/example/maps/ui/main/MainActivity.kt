@@ -118,13 +118,14 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         //ON MARKER CLICK
         gMap?.setOnMarkerClickListener {marker ->
             val directionFragment = DirectionFragment()
-            marker.tag = direction!!.address
-            mainViewModel.markerTag.value = marker.tag.toString()
+            mainViewModel.isMarkerClicked.value = true
+            // = marker.tag as String?
+            val latLng = marker.position
+            mainViewModel.markerTag.value = getAddress(latLng.latitude,latLng.longitude)
             directionFragment.show(supportFragmentManager, directionFragment.tag)
-            Log.e(TAG, "onMarkerClick: " + mainViewModel.markerTag.value, )
+            Log.e(TAG, "onMarkerClick: " + marker.tag as String?, )
             true
         }
-        //GetGoogleMapImage().execute()
 
         //NEW MARKER
         gMap?.setOnMapClickListener { cords ->
@@ -136,16 +137,20 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
 
             val dest = LatLng(cords.latitude, cords.longitude)
 
-            var marker = googleMap?.addMarker(MarkerOptions().position(dest))
-            marker?.tag = direction!!.address
+            val marker = googleMap?.addMarker(MarkerOptions().position(dest))
             //mainViewModel.direction.address = getAddress(cords.latitude,cords.longitude)
-
 
             //ADDRESSES
             direction!!.origin = getAddress(tempMarker.latitude,tempMarker.longitude)
             Log.e(TAG, "onMapReady: "+ direction!!.origin, )
             direction!!.address = getAddress(cords.latitude,cords.longitude)
 
+            //NOT USING THIS CUZ ON SWIPE gMap.clear() WHICH REMOVES THE TAG(S)
+            //marker?.tag = direction!!.address
+            //INSTEAD
+
+            direction!!.markerTag = direction!!.address
+            Log.e(TAG, "onMapReady_markertag: "+marker?.tag, )
 
             //LATLONG
             direction!!.lat = cords.latitude
@@ -157,7 +162,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
             Log.d("GoogleMap", "URL : $URL")
             GetDirection(URL).execute()
             GetGoogleMapImage().execute()
-
             Handler().postDelayed({
                 addDirection(direction!!)
             },2000)
