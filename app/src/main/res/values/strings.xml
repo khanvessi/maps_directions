@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">Maps</string>
+    <string name="map_key" translatable="false">AIzaSyBi5iDQR8HBU1pSpMMHnEdL8uZvf5yRq2M</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+</resources>
