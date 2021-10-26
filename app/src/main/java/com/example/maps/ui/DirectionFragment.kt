@@ -1,6 +1,8 @@
 package com.example.maps.ui
 
+import android.content.ContentValues.TAG
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -24,6 +26,7 @@ class DirectionFragment : BottomSheetDialogFragment() {
         super.onCreate(savedInstanceState)
 
     }
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -41,36 +44,41 @@ class DirectionFragment : BottomSheetDialogFragment() {
         super.onViewCreated(view, savedInstanceState)
 
         //OBSEERVING TO ADD LIST FOR NEW DIRECTIONS
-        mainViewModel.listOfDirection.observe(viewLifecycleOwner){
-            val adapterViewPager = mainViewModel.listOfDirection.value?.let { ViewPageAdapter(it) }
-            binding.apply {
-                viewPager2.adapter = adapterViewPager
-                viewPager2.currentItem
-                circleIndicator.setViewPager(viewPager2)
-                viewPager2.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
-                    override fun onPageSelected(position: Int) {
-                        mainViewModel.currentSelectedPagePos.value = position
-                    }
-                })
+        mainViewModel.listOfDirection.observe(viewLifecycleOwner) {
+            if(mainViewModel.isMarkerClicked.value != true){
+                Log.e(TAG, "onViewCreated: CALLED", )
+                val adapterViewPager = mainViewModel.listOfDirection.value?.let { ViewPageAdapter(it) }
+                binding.apply {
+                    viewPager2.adapter = adapterViewPager
+                    viewPager2.currentItem = mainViewModel.mDirectionList.lastIndex
+                    circleIndicator.setViewPager(viewPager2)
+                    viewPager2.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
+                        override fun onPageSelected(position: Int) {
+                            mainViewModel.currentSelectedPagePos.value = position
+                        }
+                    })
+                }
             }
         }
 
         //OBSERVING AFTER CLICKING ON MARKERS FROM MAP TO SHOW THEIR RESPECTIVE POSITIONS
-        mainViewModel.markerTag.observe(viewLifecycleOwner){markerTag ->
+        mainViewModel.markerTag.observe(viewLifecycleOwner) { markerTag ->
             val adapterViewPager = mainViewModel.listOfDirection.value?.let { ViewPageAdapter(it) }
-            var count = -1
-            for(tag in mainViewModel.mDirectionList){
-                count++
-                if(tag.address == markerTag){
+            for (tag in mainViewModel.mDirectionList) {
+                if (tag.address == markerTag) {
+                    Log.e(TAG, "TAG: ${tag.address}")
+                    Log.e(TAG, "MARKER TAG: ${markerTag}")
                     binding.apply {
                         viewPager2.adapter = adapterViewPager
-                        viewPager2.currentItem = count
+                        viewPager2.currentItem = mainViewModel.mDirectionList.indexOf(tag)
+                        Log.e(TAG, "onViewCreated: " + mainViewModel.mDirectionList.indexOf(tag))
                         circleIndicator.setViewPager(viewPager2)
                         viewPager2.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
                             override fun onPageSelected(position: Int) {
                                 mainViewModel.currentSelectedPagePos.value = position
                             }
                         })
+                        mainViewModel.isMarkerClicked.value = false
                     }
                 }
             }

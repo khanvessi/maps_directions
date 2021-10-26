@@ -57,6 +57,8 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
     var server: LatLng? = null
     var destination: LatLng? = null
     var direction: Direction? = null
+    var curPageLatLong: LatLng? = null
+    var tempMarker: LatLng? = null
     private val mainViewModel by viewModels<MainViewModel>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -96,22 +98,14 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
 
         mainViewModel.currentSelectedPagePos.observe(this){
             Log.e(TAG, "onCreate: Current Page Position, $it", )
-            gMap?.clear()
-            val tempMarker = LatLng(33.62407496836641, 73.07110647253837)
-            gMap?.addMarker(MarkerOptions().position(tempMarker).title("Server"))
+            tempMarker = LatLng(33.62407496836641, 73.07110647253837)
             val currentPage = mainViewModel.listOfDirection.value
             val currPage = currentPage?.get(it)
-            val curPageLatLong = currPage?.let { it1 -> LatLng(it1.lat,it1.lng) }
-//            if (currPage != null) {
-//                Log.e(TAG, "onCreate: CURRENT PAGE: " +currPage.lat+ currPage.lng, )
-//                Log.e(TAG, "onCreate: CURRENT PAGE: $currPage", )
-//            }
-            gMap?.addMarker(MarkerOptions().position(curPageLatLong))
-
-            val URL = curPageLatLong?.let { currPageLatLong -> getDirectionURL(tempMarker, currPageLatLong) }
-            if (URL != null) {
-                GetDirection(URL).execute()
-            }
+            curPageLatLong = currPage?.let { it1 -> LatLng(it1.lat,it1.lng) }
+                val URL = curPageLatLong?.let { currPageLatLong -> getDirectionURL(tempMarker!!, currPageLatLong) }
+                if (URL != null) {
+                    GetDirectionUponSwiping(URL).execute()
+                }
         }
     }
 
@@ -121,16 +115,18 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         googleMap?.addMarker(MarkerOptions().position(server).title("Server"))
         googleMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(server,15f))
 
+        //ON MARKER CLICK
         gMap?.setOnMarkerClickListener {marker ->
             val directionFragment = DirectionFragment()
             marker.tag = direction!!.address
             mainViewModel.markerTag.value = marker.tag.toString()
             directionFragment.show(supportFragmentManager, directionFragment.tag)
-            Log.e(TAG, "onMarkerClick: ", )
+            Log.e(TAG, "onMarkerClick: " + mainViewModel.markerTag.value, )
             true
         }
         //GetGoogleMapImage().execute()
 
+        //NEW MARKER
         gMap?.setOnMapClickListener { cords ->
             direction = Direction()
             destination = LatLng(cords.latitude,cords.longitude)
@@ -200,15 +196,60 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         }
 
         override fun onPostExecute(result: List<List<LatLng>>) {
-            val lineoption = PolylineOptions()
+            val lineOption = PolylineOptions()
             for (i in result.indices){
-                lineoption.addAll(result[i])
-                lineoption.width(10f)
-                lineoption.color(Color.BLUE)
-                lineoption.geodesic(true)
+                lineOption.addAll(result[i])
+                lineOption.width(10f)
+                lineOption.color(Color.BLUE)
+                lineOption.geodesic(true)
             }
             Log.e(TAG, "onPostExecute:")
-            gMap?.addPolyline(lineoption)
+            gMap?.addPolyline(lineOption)
+        }
+    }
+
+    @SuppressLint("StaticFieldLeak")
+    private inner class GetDirectionUponSwiping(val url : String) : AsyncTask<Void, Void, List<List<LatLng>>>(){
+        override fun doInBackground(vararg params: Void?): List<List<LatLng>> {
+            val client = OkHttpClient()
+            val request = Request.Builder().url(url).build()
+            val response = client.newCall(request).execute()
+            val data = response.body!!.string()
+            Log.d("GoogleMap" , " data : $data")
+            val result =  ArrayList<List<LatLng>>()
+            try{
+                val respObj = Gson().fromJson(data, GoogleMapDTO::class.java)
+
+                val path =  ArrayList<LatLng>()
+
+                for (i in 0 until respObj.routes[0].legs[0].steps.size){
+//                    val startLatLng = LatLng(respObj.routes[0].legs[0].steps[i].start_location.lat.toDouble()
+//                            ,respObj.routes[0].legs[0].steps[i].start_location.lng.toDouble())
+//                    path.add(startLatLng)
+//                    val endLatLng = LatLng(respObj.routes[0].legs[0].steps[i].end_location.lat.toDouble()
+//                            ,respObj.routes[0].legs[0].steps[i].end_location.lng.toDouble())
+                    path.addAll(decodePolyline(respObj.routes[0].legs[0].steps[i].polyline.points))
+                }
+                result.add(path)
+            }catch (e:Exception){
+                e.printStackTrace()
+            }
+            return result
+        }
+
+        override fun onPostExecute(result: List<List<LatLng>>) {
+            val lineOption = PolylineOptions()
+            for (i in result.indices){
+                lineOption.addAll(result[i])
+                lineOption.width(10f)
+                lineOption.color(Color.BLUE)
+                lineOption.geodesic(true)
+            }
+            Log.e(TAG, "onPostExecute:")
+            gMap?.clear()
+            gMap?.addMarker(MarkerOptions().position(curPageLatLong))
+            gMap?.addMarker(MarkerOptions().position(tempMarker).title("Server"))
+            gMap?.addPolyline(lineOption)
         }
     }
 
